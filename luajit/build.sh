@@ -16,7 +16,7 @@ do
     ;;
     aarch64)
         ARCH=arm64
-        _EXTRAFLAGS="-fPIC"  #-DLUAJIT_TARGET=LUAJIT_ARCH_ARM
+        _EXTRAFLAGS="-fPIC"
         _HOST_CC="gcc"
     ;;
     mipsel)
@@ -41,6 +41,15 @@ do
     ;;
     esac
     
+    case $_ARCH in
+    aarch64|mips64el|x86_64)
+        LINKER=/system/bin/linker64
+    ;;
+    *)
+        LINKER=/system/bin/linker
+    ;;
+    esac
+    
     
     if [[ -f $_basedir/lock ]] ; then
         [[ -f $_basedir/../_BINARY/${ARCH}/xbin/luajit ]] && continue
@@ -56,15 +65,19 @@ do
     _CROSS_COMPILE=$(ls ${_PATH} | grep -oP '\S+(?=-gcc)' | head -1)
     _CROSS="${_CROSS_COMPILE}-"
     _FLAGS="--sysroot=${PLATFORM}/arch-${ARCH}"
+    _EXTRAFLAGS="${_EXTRAFLAGS} -Wl,--dynamic-linker=${LINKER} -Wl,--gc-sections -Wl,-z,nocopyreloc -no-canonical-prefixes -Wl,--no-undefined -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now"
     export PATH="${_PATH}:$PATH"
     
-    echo "============${ARCH}==============="
+    echo "============${ARCH}===============" # -L$_basedir/../${LIBRARY_PATH}/${ARCH}
     make HOST_CC="${_HOST_CC}" CROSS=${_CROSS} TARGET_FLAGS="${_FLAGS} ${_EXTRAFLAGS}" PREFIX=/system \
+        BUILDMODE=mixed \
         && rm -f $_basedir/lock || break
     rm -f $_basedir/../_BINARY/${ARCH}/xbin/luajit $_basedir/../_BINARY/${ARCH}/lib/libluajit.so
     mkdir -p $_basedir/../_BINARY/${ARCH}/xbin $_basedir/../_BINARY/${ARCH}/lib
+    cp ./src/luajit.pie $_basedir/../_BINARY/${ARCH}/xbin/luajit.pie
     cp ./src/luajit $_basedir/../_BINARY/${ARCH}/xbin/luajit
     cp ./src/libluajit.so $_basedir/../_BINARY/${ARCH}/lib/libluajit.so
+    cp ./src/libluajit.a $_basedir/../_EXTERNAL/_SHARED/lib/${ARCH}/libluajit.a
     ${_CROSS_COMPILE}-strip $_basedir/../_BINARY/${ARCH}/xbin/luajit
     ${_CROSS_COMPILE}-strip $_basedir/../_BINARY/${ARCH}/lib/libluajit.so
 done
