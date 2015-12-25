@@ -1,0 +1,17 @@
+diff -Naur pcre-8.38/sljit/sljitConfigInternal.h pcre/sljit/sljitConfigInternal.h
+--- pcre-8.38/sljit/sljitConfigInternal.h	2015-07-31 19:00:43.000000000 +0800
++++ pcre/sljit/sljitConfigInternal.h	2015-12-21 21:54:58.783440492 +0800
+@@ -303,9 +303,11 @@
+ #elif defined __ANDROID__
+ 
+ /* Android lacks __clear_cache; instead, cacheflush should be used. */
+-
++//FIXME
+ #define SLJIT_CACHE_FLUSH(from, to) \
+-    cacheflush((long)(from), (long)(to), 0)
++    __clear_cache((char*)(from), (char*)(to))
++    
++//cacheflush((long)(from), (long)(to), 0)
+ 
+ #elif (defined SLJIT_CONFIG_PPC && SLJIT_CONFIG_PPC)
+ 

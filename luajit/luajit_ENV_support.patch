@@ -1,0 +1,111 @@
+diff -Naur orig/src/lib_base.c src/src/lib_base.c
+--- orig/src/lib_base.c	2015-12-25 10:20:15.784468044 +0800
++++ src/src/lib_base.c	2015-12-25 10:21:10.941421991 +0800
+@@ -363,6 +363,10 @@
+       GCtab *t = tabV(L->base+envarg-1);
+       setgcref(fn->c.env, obj2gco(t));
+       lj_gc_objbarrier(L, fn, t);
++      if (LJ_52) {
++        lua_pushvalue(L, envarg);
++        lua_setupvalue(L, -2, 1);
++      }
+     }
+     return 1;
+   } else {
+diff -Naur orig/src/lj_lex.c src/src/lj_lex.c
+--- orig/src/lj_lex.c	2015-12-25 10:20:16.192474990 +0800
++++ src/src/lj_lex.c	2015-12-25 10:21:44.650019000 +0800
+@@ -382,6 +382,7 @@
+   ls->lookahead = TK_eof;  /* No look-ahead token. */
+   ls->linenumber = 1;
+   ls->lastline = 1;
++  ls->env = NULL;
+   lj_str_resizebuf(ls->L, &ls->sb, LJ_MIN_SBUF);
+   next(ls);  /* Read-ahead first char. */
+   if (ls->current == 0xef && ls->n >= 2 && char2int(ls->p[0]) == 0xbb &&
+diff -Naur orig/src/lj_lex.h src/src/lj_lex.h
+--- orig/src/lj_lex.h	2015-12-25 10:20:16.192474990 +0800
++++ src/src/lj_lex.h	2015-12-25 10:22:19.661649465 +0800
+@@ -72,6 +72,7 @@
+   BCInsLine *bcstack;	/* Stack for bytecode instructions/line numbers. */
+   MSize sizebcstack;	/* Size of bytecode stack. */
+   uint32_t level;	/* Syntactical nesting level. */
++  GCstr *env;  /* const _ENV */
+ } LexState;
+ 
+ LJ_FUNC int lj_lex_setup(lua_State *L, LexState *ls);
+diff -Naur orig/src/lj_load.c src/src/lj_load.c
+--- orig/src/lj_load.c	2015-12-25 10:20:16.200475126 +0800
++++ src/src/lj_load.c	2015-12-25 10:23:03.958461211 +0800
+@@ -40,6 +40,9 @@
+   }
+   pt = bc ? lj_bcread(ls) : lj_parse(ls);
+   fn = lj_func_newL_empty(L, pt, tabref(L->env));
++  if (LJ_52) {
++    settabV(L, uvval(&gcref(fn->l.uvptr[0])->uv), tabref(L->env)); /* Set env table to upvalue 1 */
++  }
+   /* Don't combine above/below into one statement. */
+   setfuncV(L, L->top++, fn);
+   return NULL;
+diff -Naur orig/src/lj_parse.c src/src/lj_parse.c
+--- orig/src/lj_parse.c	2015-12-25 10:20:16.316477102 +0800
++++ src/src/lj_parse.c	2015-12-25 10:26:33.037469492 +0800
+@@ -1115,6 +1115,12 @@
+ 	fscope_uvmark(fs, reg);  /* Scope now has an upvalue. */
+       return (MSize)(e->u.s.aux = (uint32_t)fs->varmap[reg]);
+     } else {
++       if (LJ_52 && name == fs->ls->env && fs->prev == NULL) {
++        fscope_uvmark(fs,0);
++        expr_init(e, VUPVAL, 0);
++        e->u.s.aux = 0;
++        return 0;
++       }
+       MSize vidx = var_lookup_(fs->prev, name, e, 0);  /* Var in outer func? */
+       if ((int32_t)vidx >= 0) {  /* Yes, make it an upvalue here. */
+ 	e->u.s.info = (uint8_t)var_lookup_uv(fs, vidx, e);
+@@ -1131,8 +1137,9 @@
+ 
+ /* Lookup variable name. */
+ #define var_lookup(ls, e) \
+-  var_lookup_((ls)->fs, lex_str(ls), (e), 1)
++  var_lookup_((ls)->fs, lex_str(ls), (e), 1); if (LJ_52 && (e)->k == VGLOBAL) var_global_((ls), (e))
+ 
++static void var_global_(LexState *ls, ExpDesc *e);
+ /* -- Goto an label handling ---------------------------------------------- */
+ 
+ /* Add a new goto or label. */
+@@ -1691,6 +1698,17 @@
+   }
+   t->u.s.aux = expr_toanyreg(fs, e);  /* 0..255: register */
+ }
++/* Convert global to _ENV index. */
++static void var_global_(LexState *ls, ExpDesc *e)
++{
++  FuncState *fs = ls->fs;
++  ExpDesc key;
++  expr_init(&key, VKSTR, 0);
++  key.u.sval = e->u.sval;
++  var_lookup_(fs, ls->env, e, 1);
++  expr_toanyreg(fs, e);
++  expr_index(fs, e, &key);
++}
+ 
+ /* Parse index expression with named field. */
+ static void expr_field(LexState *ls, ExpDesc *v)
+@@ -2738,6 +2756,16 @@
+   fs.bcbase = NULL;
+   fs.bclim = 0;
+   fs.flags |= PROTO_VARARG;  /* Main chunk is always a vararg func. */
++  
++  if (LJ_52) {
++    /* Create upvalue named _ENV */
++    ls->env = lj_parse_keepstr(ls, "_ENV", 4);  /* Anchor _ENV string, 4 is sizeof _ENV */ 
++    var_new(ls, 0, ls->env);
++    fs.uvmap[0] = 0;
++    fs.uvtmp[0] = 0;
++    fs.nuv = 1;
++  }
++  
+   fscope_begin(&fs, &bl, 0);
+   bcemit_AD(&fs, BC_FUNCV, 0, 0);  /* Placeholder. */
+   lj_lex_next(ls);  /* Read-ahead first token. */

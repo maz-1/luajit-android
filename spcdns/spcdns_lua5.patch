@@ -1,0 +1,31 @@
+diff -Naur spcdns/src/luadns.c src/src/luadns.c
+--- spcdns/src/luadns.c	2013-04-30 11:26:40.000000000 +0800
++++ src/src/luadns.c	2015-12-22 18:05:30.856990392 +0800
+@@ -113,6 +113,18 @@
+ #include "netsimple.h"
+ 
+ /********************************************************************/
++#if LUA_VERSION_NUM > 501
++int luaL_typerror (lua_State *L, int narg, const char *tname) {
++  const char *msg = lua_pushfstring(L, "%s expected, got %s",
++                                    tname, luaL_typename(L, narg));
++  return luaL_argerror(L, narg, msg);
++}
++#define lua_objlen(L,i)		(lua_rawlen(L, (i)))
++#define luaL_register(L,n,l)	(luaL_newlib(L,l))
++#define luaL_checkint(L,n)	(luaL_checkinteger(L,n))
++#define luaL_optint(L,n,i)	(luaL_optinteger(L,n,i))
++#endif
++/********************************************************************/
+ 
+ static bool parse_edns0_opt(lua_State *L,edns0_opt_t *opt)
+ {
+@@ -739,7 +751,7 @@
+ 
+ /**********************************************************************/
+ 
+-static const struct luaL_reg reg_dns[] =
++static const struct luaL_Reg reg_dns[] =
+ {
+   { "encode"	, dnslua_encode		} ,
+   { "decode"	, dnslua_decode		} ,

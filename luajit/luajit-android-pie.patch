@@ -1,0 +1,12 @@
+diff -Naur a/src/Makefile b/src/Makefile
+--- a/src/Makefile	2015-08-26 05:35:00.000000000 +0800
++++ b/src/Makefile	2015-12-21 18:59:17.478483869 +0800
+@@ -690,7 +690,7 @@
+ 
+ $(LUAJIT_T): $(TARGET_O) $(LUAJIT_O) $(TARGET_DEP)
+ 	$(E) "LINK      $@"
+-	$(Q)$(TARGET_LD) $(TARGET_ALDFLAGS) -o $@ $(LUAJIT_O) $(TARGET_O) $(TARGET_ALIBS)
++	$(Q)$(TARGET_LD) $(TARGET_ALDFLAGS) -pie -o $@ $(LUAJIT_O) $(TARGET_O) $(TARGET_ALIBS)
+ 	$(Q)$(TARGET_STRIP) $@
+ 	$(E) "OK        Successfully built LuaJIT"
+ 

@@ -1,0 +1,3 @@
+If you dont want to link luajit with -pie flag, just delete it from Makefile. 
+
+Not available on mips64el.

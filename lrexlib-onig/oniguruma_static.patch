@@ -1,0 +1,12 @@
+diff -Naur a/CMakeLists.txt oniguruma/CMakeLists.txt
+--- a/CMakeLists.txt	2015-12-22 12:37:56.000000000 +0800
++++ oniguruma/CMakeLists.txt	2015-12-22 13:31:23.959792764 +0800
+@@ -70,7 +70,7 @@
+  enc/gb18030.c enc/koi8_r.c enc/cp1251.c)
+ 
+ 
+-add_library(onig ${_SRCS})
++add_library(onig STATIC ${_SRCS})
+ 
+ install_library(onig)
+ 

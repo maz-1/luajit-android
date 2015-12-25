@@ -1,0 +1,14 @@
+diff -Naur a/src/alien.c b/src/alien.c
+--- a/src/alien.c	2015-12-22 09:41:43.934426660 +0800
++++ b/src/alien.c	2015-12-22 09:40:02.000000000 +0800
+@@ -354,6 +354,10 @@
+ #define FFI_SYSV FFI_DEFAULT_ABI
+ #endif
+ 
++#ifdef __mips__
++#define FFI_SYSV FFI_DEFAULT_ABI
++#endif
++
+ static const ffi_abi ffi_abis[] = { FFI_DEFAULT_ABI, FFI_SYSV, FFI_STDCALL };
+ static const char *const ffi_abi_names[] = { "default", "cdecl", "stdcall", NULL };
+ 
